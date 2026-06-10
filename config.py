@@ -34,7 +34,7 @@ REGIONS = {
 }
 
 # ── GeoJSON 경로 ───────────────────────────────────────────────
-ROAD_GEOJSON = "data2/관악구_smoothDEM.geojson"
+ROAD_GEOJSON = "data2/gwanack_road_property.geojson"
 CRS          = "EPSG:4326"
 
 # ── 배송 설정 ─────────────────────────────────────────────────

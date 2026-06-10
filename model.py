@@ -33,7 +33,7 @@ START_LAT       = 37.470237
 START_POS       = (START_LON, START_LAT)
 
 GRAPH_CACHE     = "data/graph.graphml"
-ROAD_GEOJSON    = "data2/관악구_smoothDEM.geojson"
+ROAD_GEOJSON    = "data2/gwanack_road_property.geojson"
 NUM_HOUSES      = 10
 CRS             = "EPSG:4326"
 TRUCK_MIN_WIDTH = 4.0   # 트럭 진입 최소 도로폭 (m)
