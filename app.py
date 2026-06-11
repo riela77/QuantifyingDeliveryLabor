@@ -11,260 +11,8 @@ import matplotlib.colors as mcolors
 import solara
 import ipyleaflet as ipl
 from pathlib import Path
-import solara
 from model import DeliveryModel, NUM_HOUSES, START_LAT, START_LON
 from agents import TruckWalkAgent, MotoAgent, STEEP_THRESHOLD
-
-# ── CSS 문자열 (JS로 document.head에 주입) ──────────────────────
-_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-
-:root {
-  --bg:      #0d1117;
-  --surf:    #161b22;
-  --overlay: #21262d;
-  --bd:      #30363d;
-  --bd-dim:  #21262d;
-  --t1:      #e6edf3;
-  --t2:      #c9d1d9;
-  --t3:      #8b949e;
-  --t4:      #484f58;
-  --blue:    #1f6feb;
-  --blue-hi: #388bfd;
-  --grn-hi:  #2ea043;
-  --yel-hi:  #d29922;
-  --red:     #da3633;
-  --red-hi:  #f85149;
-  --org-hi:  #f0883e;
-  --mono:    'JetBrains Mono', monospace;
-}
-
-/* ── 전체 페이지 다크 배경 ── */
-html, body { background: var(--bg) !important; }
-.v-application { background: var(--bg) !important; }
-.v-application--wrap { background: var(--bg) !important; }
-.v-main, .v-main__wrap { background: var(--bg) !important; }
-.v-content, .v-content__wrap { background: var(--bg) !important; }
-
-/* Solara 기본 카드/시트 투명 처리 */
-.v-card, .v-sheet { background: transparent !important; box-shadow: none !important; }
-
-/* ── 헤더 ── */
-.lm-header {
-  background: var(--surf) !important;
-  border-bottom: 1px solid var(--bd);
-  height: 44px; display: flex; align-items: center;
-  padding: 0 16px; gap: 10px; width: 100%;
-}
-.lm-logo { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--t1); display: flex; align-items: center; gap: 5px; }
-.lm-logo .br { color: var(--blue-hi); }
-.lm-logo-sep { width: 1px; height: 18px; background: var(--bd); }
-.lm-logo-sub { font-size: 10px; color: var(--t3); font-family: var(--mono); }
-.lm-ticker {
-  margin-left: auto; display: flex; align-items: center; gap: 7px;
-  background: var(--overlay); border: 0.5px solid var(--bd);
-  border-radius: 6px; padding: 3px 10px;
-  font-family: var(--mono); font-size: 10px; color: var(--t3);
-}
-.lm-ticker .sv { font-size: 12px; font-weight: 600; color: var(--t1); }
-.lm-ticker .ph {
-  font-size: 9px; padding: 1px 6px; border-radius: 4px;
-  background: var(--bg); color: var(--blue-hi);
-  border: 0.5px solid var(--blue);
-}
-
-/* ── 컨트롤 바 ── */
-.lm-ctrl-bar {
-  background: var(--surf) !important;
-  border-bottom: 1px solid var(--bd);
-  padding: 7px 16px; display: flex;
-  align-items: center; gap: 8px; flex-wrap: wrap;
-}
-
-/* Solara 버튼 → 다크 스타일 강제 */
-.lm-ctrl-bar .v-btn {
-  background: var(--overlay) !important;
-  border: 0.5px solid var(--bd) !important;
-  border-radius: 7px !important;
-  color: var(--t2) !important;
-  font-family: var(--mono) !important;
-  font-size: 12px !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-  box-shadow: none !important;
-  height: 32px !important;
-  min-height: 32px !important;
-}
-.lm-ctrl-bar .v-btn:hover { background: var(--bd) !important; color: var(--t1) !important; }
-.lm-ctrl-bar .v-btn.btn-run { background: var(--blue) !important; border-color: var(--blue) !important; color: #fff !important; }
-.lm-ctrl-bar .v-btn.btn-run:hover { background: var(--blue-hi) !important; }
-.lm-ctrl-bar .v-btn.btn-pause { background: var(--red) !important; border-color: var(--red) !important; color: #fff !important; }
-
-/* 슬라이더 다크 */
-.lm-ctrl-bar .v-slider { margin: 0 !important; }
-.lm-ctrl-bar .v-slider__track-fill { background: var(--blue) !important; }
-.lm-ctrl-bar .v-slider__thumb-container .v-slider__thumb { background: var(--blue-hi) !important; }
-.lm-ctrl-bar .v-slider__track-background { background: var(--overlay) !important; }
-.lm-ctrl-bar .v-input, .lm-ctrl-bar .v-input__slot { background: transparent !important; }
-.lm-ctrl-bar label, .lm-ctrl-bar .v-label { color: var(--t3) !important; font-family: var(--mono) !important; font-size: 11px !important; }
-
-/* ── 지도 위 오버레이 ── */
-.lm-status-bar {
-  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
-  background: rgba(22,27,34,.92); border: 0.5px solid var(--bd);
-  border-radius: 100px; padding: 5px 18px;
-  font-size: 11px; font-family: var(--mono); color: var(--t3);
-  white-space: nowrap; pointer-events: none; z-index: 500;
-  backdrop-filter: blur(8px);
-}
-.lm-map-alert {
-  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-  background: rgba(13,10,10,.95); border: 0.5px solid var(--red-hi);
-  border-radius: 8px; padding: 7px 16px;
-  font-size: 11px; font-family: var(--mono); color: var(--red-hi);
-  white-space: nowrap; z-index: 600; pointer-events: none;
-}
-.lm-legend {
-  position: absolute; bottom: 18px; right: 14px;
-  background: rgba(22,27,34,.9); border: 0.5px solid var(--bd);
-  border-radius: 8px; padding: 9px 12px;
-  font-size: 10px; color: var(--t3); font-family: var(--mono); z-index: 500;
-  line-height: 2.1;
-}
-.lm-leg { display: flex; align-items: center; gap: 6px; }
-.lm-ll  { display: inline-block; width: 18px; height: 2.5px; border-radius: 2px; }
-.lm-ldot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-
-/* ── 우측 패널 ── */
-.lm-panel {
-  width: 272px !important; flex-shrink: 0 !important;
-  background: var(--surf) !important;
-  border-left: 1px solid var(--bd) !important;
-  display: flex !important; flex-direction: column;
-  overflow: hidden; height: 100%;
-}
-.lm-tabs { display: flex; border-bottom: 1px solid var(--bd); flex-shrink: 0; }
-.lm-tab {
-  flex: 1; padding: 9px 4px; font-size: 10px; font-family: var(--mono);
-  color: var(--t3); cursor: pointer; border: none;
-  border-bottom: 2px solid transparent; background: none; letter-spacing: .02em;
-  transition: all .15s;
-}
-.lm-tab:hover { color: var(--t2); background: var(--overlay); }
-.lm-tab.active { color: var(--blue-hi); border-bottom-color: var(--blue); }
-.lm-pane { display: none; flex: 1; overflow-y: auto; padding: 14px; flex-direction: column; gap: 9px; }
-.lm-pane.active { display: flex; }
-.lm-pane::-webkit-scrollbar { width: 3px; }
-.lm-pane::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
-
-/* ── 지표 카드 ── */
-.lm-mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.lm-metric { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 10px 11px; }
-.lm-mv { font-size: 22px; font-weight: 600; font-family: var(--mono); line-height: 1; }
-.lm-ml { font-size: 10px; color: var(--t3); margin-top: 4px; }
-
-/* ── 섹션 라벨 ── */
-.lm-sec { font-size: 10px; color: var(--t3); font-family: var(--mono); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; border-bottom: 0.5px solid var(--bd-dim); padding-bottom: 4px; margin-top: 2px; }
-
-/* ── 진행바 ── */
-.lm-prow { display: flex; justify-content: space-between; font-size: 10px; color: var(--t3); font-family: var(--mono); margin-bottom: 5px; }
-.lm-pwrap { background: var(--overlay); border-radius: 4px; height: 5px; overflow: hidden; }
-.lm-pfill { height: 5px; border-radius: 4px; background: var(--blue-hi); transition: width .4s; }
-
-/* ── 노동 강도 카드 ── */
-.lm-lgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.lm-lc { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 9px 10px; }
-.lm-lc-lbl { font-size: 9px; color: var(--t3); font-family: var(--mono); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 5px; }
-.lm-lc-val { font-size: 17px; font-weight: 600; font-family: var(--mono); color: var(--t1); }
-.lm-lc-val.warn   { color: var(--org-hi); }
-.lm-lc-val.danger { color: var(--red-hi); }
-
-/* ── 경사도 박스 ── */
-.lm-slopebox { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 9px 12px; }
-.lm-sloperow { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-
-/* ── 배달원 카드 ── */
-.lm-drv { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 9px 11px; transition: border-color .25s, background .25s; }
-.lm-drv.warn { border-color: var(--yel-hi) !important; background: rgba(18,16,10,.6); }
-.lm-drv.over { border-color: var(--red-hi) !important; background: rgba(19,10,10,.6); }
-.lm-drv-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.lm-drv-name { font-family: var(--mono); font-weight: 600; font-size: 11px; color: var(--t1); }
-.lm-badge { font-size: 9px; font-family: var(--mono); padding: 2px 7px; border-radius: 20px; background: var(--overlay); color: var(--t3); border: 0.5px solid var(--bd); }
-.lm-badge.truck { color: var(--blue-hi); border-color: var(--blue); }
-.lm-badge.walk  { color: var(--org-hi);  border-color: var(--org-hi); }
-.lm-badge.done  { color: var(--grn-hi);  border-color: var(--grn-hi); }
-.lm-badge.over  { color: var(--red-hi);  border-color: var(--red-hi); }
-.lm-drow { display: flex; justify-content: space-between; color: var(--t3); font-size: 10px; font-family: var(--mono); margin-bottom: 3px; }
-.lm-drow span:last-child { color: var(--t2); }
-.lm-dpbg { background: var(--overlay); border-radius: 3px; height: 3px; margin-top: 5px; }
-.lm-dpfg { border-radius: 3px; height: 3px; background: var(--blue); transition: width .4s; }
-.lm-dpfg.warn { background: var(--yel-hi); }
-.lm-dpfg.over { background: var(--red-hi); }
-
-/* ── 배송지 목록 ── */
-.lm-hlist { display: flex; flex-direction: column; gap: 3px; }
-.lm-hrow { display: flex; align-items: center; gap: 7px; font-size: 11px; font-family: var(--mono); color: var(--t3); padding: 3px 0; }
-.lm-hrow.cur  { color: var(--t1); }
-.lm-hrow.done { color: var(--t4); }
-.lm-hdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
-/* ── 완료 배너 ── */
-.lm-done { background: rgba(35,134,54,.1); border: 0.5px solid var(--grn-hi); border-radius: 8px; padding: 10px 12px; font-family: var(--mono); font-size: 11px; color: var(--grn-hi); text-align: center; line-height: 1.9; }
-
-/* ── 시간초과 알림 ── */
-.lm-ot { background: rgba(19,10,10,.8); border: 0.5px solid var(--red-hi); border-radius: 6px; padding: 7px 10px; font-size: 11px; color: var(--red-hi); font-family: var(--mono); }
-
-/* ── 인포 박스 ── */
-.lm-info { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 10px 12px; font-size: 10px; font-family: var(--mono); color: var(--t3); line-height: 2.1; }
-.lm-info .g { color: var(--grn-hi); font-weight: 500; }
-.lm-info .y { color: var(--yel-hi); font-weight: 500; }
-.lm-info .r { color: var(--red-hi); font-weight: 500; }
-"""
-
-# JS로 document.head에 <style> 태그 직접 박기
-_CSS_INJECT_JS = f"""
-<script>
-(function() {{
-  if (document.getElementById('lm-global-css')) return;
-  var s = document.createElement('style');
-  s.id = 'lm-global-css';
-  s.textContent = {repr(_CSS)};
-  document.head.appendChild(s);
-  // 폰트도 주입
-  var f = document.createElement('link');
-  f.rel = 'stylesheet';
-  f.href = 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap';
-  document.head.appendChild(f);
-}})();
-</script>
-"""
-
-# 탭 전환 JS
-_TAB_JS = """
-<script>
-(function() {
-  function lmTab(id, btn) {
-    document.querySelectorAll('.lm-pane').forEach(function(p){ p.classList.remove('active'); });
-    document.querySelectorAll('.lm-tab').forEach(function(b){ b.classList.remove('active'); });
-    var pane = document.getElementById('lm-pane-' + id);
-    if (pane) pane.classList.add('active');
-    if (btn) btn.classList.add('active');
-  }
-  window.lmTab = lmTab;
-
-  var _alertTimer = null;
-  function lmAlert(msg) {
-    var el = document.querySelector('.lm-map-alert');
-    if (!el) return;
-    el.querySelector('span').textContent = msg;
-    el.style.display = 'block';
-    if (_alertTimer) clearTimeout(_alertTimer);
-    _alertTimer = setTimeout(function(){ el.style.display = 'none'; }, 3500);
-  }
-  window.lmAlert = lmAlert;
-})();
-</script>
-"""
 
 
 # ── 우측 패널 HTML 생성 함수 ────────────────────────────────────
@@ -323,15 +71,21 @@ def _panel_html(ag, step, houses, walk_km, truck_km,
         '<div class="lm-ot">⛔ 근무시간 초과</div>'
     ) if over_time else ""
 
+    # 탭 전환: radio input + CSS (JS 불필요)
     return f"""
 <div class="lm-panel">
+  <!-- 라디오 버튼 (숨김) - CSS로 탭 전환 제어 -->
+  <input type="radio" name="lm-tab" id="tab-status" checked>
+  <input type="radio" name="lm-tab" id="tab-params">
+  <input type="radio" name="lm-tab" id="tab-env">
+
   <div class="lm-tabs">
-    <button class="lm-tab active" onclick="lmTab('status',this)">📊 현황</button>
-    <button class="lm-tab"       onclick="lmTab('params',this)">⚙️ 파라미터</button>
-    <button class="lm-tab"       onclick="lmTab('env',this)">🗺️ 환경</button>
+    <label class="lm-tab" for="tab-status">📊 현황</label>
+    <label class="lm-tab" for="tab-params">⚙️ 파라미터</label>
+    <label class="lm-tab" for="tab-env">🗺️ 환경</label>
   </div>
 
-  <div class="lm-pane active" id="lm-pane-status">
+  <div class="lm-pane" id="lm-pane-status">
     <div class="lm-mgrid">
       <div class="lm-metric">
         <div class="lm-mv" style="color:#2ea043">{1 if phase not in ('done','idle') else 0}</div>
@@ -454,9 +208,11 @@ def _panel_html(ag, step, houses, walk_km, truck_km,
 # ── Page 컴포넌트 ────────────────────────────────────────────────
 @solara.component
 def Page():
+    # CSS 로드 (public/style.css)
     css_path = Path("public/style.css")
     if css_path.exists():
         solara.Style(css_path.read_text(encoding="utf-8"))
+
     scenario, set_scenario = solara.use_state("truck_walk")
     max_hours              = 8
 
@@ -466,11 +222,11 @@ def Page():
     )
     map_obj = solara.use_memo(
         lambda: ipl.Map(
-            center=model.center, 
+            center=model.center,
             zoom=15,
-            scroll_wheel_zoom=True, 
+            scroll_wheel_zoom=True,
             prefer_canvas=True,
-            layout={'height': '780px', 'width': '100%'}  # 👈 여기에 layout 속성을 추가하세요!
+            layout={'height': '780px', 'width': '100%'}
         ),
         dependencies=[scenario],
     )
@@ -620,10 +376,6 @@ def Page():
     ag = model.delivery_agent
     solara.Title("LastMile Labor")
 
-    # ── CSS를 JS로 document.head에 강제 주입 ─────────────────────
-    solara.HTML("div", unsafe_innerHTML=_CSS_INJECT_JS)
-    solara.HTML("div", unsafe_innerHTML=_TAB_JS)
-
     # ── 헤더 ─────────────────────────────────────────────────────
     hh_e, mm_e = step_count.value // 60, step_count.value % 60
     solara.HTML("div", unsafe_innerHTML=f"""
@@ -660,10 +412,10 @@ def Page():
         "background:#161b22!important;border-bottom:1px solid #30363d;"
         "padding:7px 16px;gap:8px;flex-wrap:wrap;align-items:center;"
     )):
-        solara.Button(run_lbl,      on_click=on_run,   style=run_style + btn_base)
-        solara.Button("▷ 1 Step",  on_click=on_step,  style=btn_sec, disabled=running.value)
-        solara.Button("↺ 초기화",  on_click=on_reset, style=btn_sec, disabled=running.value)
-        solara.Button("💾 로그 저장", on_click=on_log, style=btn_sec)
+        solara.Button(run_lbl,        on_click=on_run,   style=run_style + btn_base)
+        solara.Button("▷ 1 Step",    on_click=on_step,  style=btn_sec, disabled=running.value)
+        solara.Button("↺ 초기화",    on_click=on_reset, style=btn_sec, disabled=running.value)
+        solara.Button("💾 로그 저장", on_click=on_log,   style=btn_sec)
         solara.HTML("span", unsafe_innerHTML=(
             f'<span style="font-family:monospace;font-size:11px;color:#8b949e;">'
             f'속도&nbsp;<span style="color:#388bfd;font-weight:600">{speed.value}</span>'
@@ -698,7 +450,7 @@ def Page():
               <div class="lm-leg"><span class="lm-ldot" style="background:#2ea043"></span>배송 완료</div>
             </div>""")
 
-        # 우측 패널 (순수 HTML)
+        # 우측 패널
         solara.HTML("div", unsafe_innerHTML=_panel_html(
             ag=ag, step=step_count.value, houses=model.houses,
             walk_km=live_walk_km.value, truck_km=live_truck_km.value,
