@@ -12,8 +12,8 @@ import solara
 import ipyleaflet as ipl
 import ipywidgets as widgets
 from pathlib import Path
-from model import DeliveryModel, NUM_HOUSES, NUM_AGENTS, START_LAT, START_LON
-from agents import TruckWalkAgent, MotoAgent, STEEP_THRESHOLD
+from model import DeliveryModel, NUM_HOUSES, NUM_AGENTS, SIM_PER_FRAME, START_LAT, START_LON
+from agents import TruckWalkAgent, STEEP_THRESHOLD
 
 # 터미널 출발지
 TERMINAL_NAME    = "구로 터미널"
@@ -39,7 +39,7 @@ _LEGEND_HTML = """
 
 # ── 우측 패널 HTML 생성 함수 ────────────────────────────────────
 def _panel_html(ag, step, houses, walk_km, truck_km,
-                carried_kg, steep, max_hours, log_path, scenario,
+                carried_kg, steep, max_hours, log_path,
                 total_orders, num_workers, steep_km, alley_pct,
                 agents):
     is_truck  = isinstance(ag, TruckWalkAgent)
@@ -256,12 +256,11 @@ def Page():
     if css_path.exists():
         solara.Style(css_path.read_text(encoding="utf-8"))
 
-    scenario, set_scenario = solara.use_state("truck_walk")
     max_hours = 8
 
     model = solara.use_memo(
-        lambda: DeliveryModel(scenario=scenario),
-        dependencies=[scenario],
+        lambda: DeliveryModel(),
+        dependencies=[],
     )
     map_obj = solara.use_memo(
         lambda: ipl.Map(
@@ -271,9 +270,9 @@ def Page():
             prefer_canvas=True,
             layout={'height': '780px', 'width': '100%'}
         ),
-        dependencies=[scenario],
+        dependencies=[],
     )
-    marker_dict = solara.use_memo(lambda: {}, dependencies=[scenario])
+    marker_dict = solara.use_memo(lambda: {}, dependencies=[])
 
     running         = solara.use_reactive(False)
     step_count      = solara.use_reactive(0)
@@ -292,15 +291,15 @@ def Page():
 
     status_widget = solara.use_memo(
         lambda: widgets.HTML(value='<div class="lm-wc-status">▶ 실행을 눌러 시작하세요</div>'),
-        dependencies=[scenario],
+        dependencies=[],
     )
     alert_widget = solara.use_memo(
         lambda: widgets.HTML(value='<div class="lm-wc-alert" style="display:none"></div>'),
-        dependencies=[scenario],
+        dependencies=[],
     )
     legend_widget = solara.use_memo(
         lambda: widgets.HTML(value=_LEGEND_HTML),
-        dependencies=[scenario],
+        dependencies=[],
     )
 
     # ── 지도 초기화 ───────────────────────────────────────────────
@@ -362,13 +361,19 @@ def Page():
             marker_dict[f"house_{house.unique_id}"] = m
             map_obj.add(m)
 
-        # 에이전트 마커 (각기 다른 색상)
+        # 에이전트 마커 (각기 다른 색상, 터미널에서 부채꼴로 퍼뜨려 겹침 방지)
+        import math as _math
+        offset = 0.0002  # 약 20m 간격
+        n = len(model.delivery_agents)
         for i, ag in enumerate(model.delivery_agents):
-            color = AGENT_COLORS[i % len(AGENT_COLORS)]
-            name  = "truck" if isinstance(ag, TruckWalkAgent) else "motorcycle"
-            icon  = ipl.AwesomeIcon(name=name, marker_color=color)
+            color   = AGENT_COLORS[i % len(AGENT_COLORS)]
+            name    = "truck" if isinstance(ag, TruckWalkAgent) else "motorcycle"
+            icon    = ipl.AwesomeIcon(name=name, marker_color=color)
+            angle   = (i / max(n, 1)) * 2 * _math.pi
+            lat_off = offset * _math.cos(angle)
+            lon_off = offset * _math.sin(angle)
             m = ipl.Marker(
-                location=(ag.geometry.y, ag.geometry.x),
+                location=(ag.geometry.y + lat_off, ag.geometry.x + lon_off),
                 icon=icon, draggable=False, title=f"배송기사 #{i+1}")
             marker_dict[f"agent_{i}"] = m
             map_obj.add(m)
@@ -378,7 +383,7 @@ def Page():
         map_obj.add(ipl.WidgetControl(widget=status_widget, position="bottomleft"))
         map_obj.add(ipl.WidgetControl(widget=legend_widget, position="bottomright"))
 
-    solara.use_effect(init_map, [scenario])
+    solara.use_effect(init_map, [])
 
     def _calc_alley_pct():
         try:
@@ -401,11 +406,13 @@ def Page():
             return
 
         live_alley_pct.set(_calc_alley_pct())
-        ag0       = model.delivery_agent  # 대표 에이전트 (#01)
+        ag0        = model.delivery_agent
         prev_phase = ag0.phase
 
+        # phase 변화 추적용 (아이콘은 phase 바뀔 때만 갱신)
+        prev_phases = {i: ag.phase for i, ag in enumerate(model.delivery_agents)}
+
         while running.value:
-            # 모든 에이전트 완료 체크
             all_done = all(a.phase == "done" for a in model.delivery_agents)
             if all_done:
                 if not log_saved.value:
@@ -417,22 +424,25 @@ def Page():
 
             model.step()
 
-            # 마커 위치 업데이트 (전체 에이전트)
+            # 마커 위치 업데이트 — location만 매 프레임, 아이콘은 phase 변화 시에만
             for i, ag in enumerate(model.delivery_agents):
                 key = f"agent_{i}"
-                if key in marker_dict:
-                    marker_dict[key].location = (ag.geometry.y, ag.geometry.x)
-                    if isinstance(ag, TruckWalkAgent):
-                        color = AGENT_COLORS[i % len(AGENT_COLORS)] if ag.phase == "truck" else "orange"
-                        name  = "truck" if ag.phase == "truck" else "male"
-                        marker_dict[key].icon = ipl.AwesomeIcon(name=name, marker_color=color)
+                if key not in marker_dict:
+                    continue
+                marker_dict[key].location = (ag.geometry.y, ag.geometry.x)
+                if isinstance(ag, TruckWalkAgent) and ag.phase != prev_phases[i]:
+                    color = AGENT_COLORS[i % len(AGENT_COLORS)] if ag.phase == "truck" else "orange"
+                    name  = "truck" if ag.phase == "truck" else "male"
+                    marker_dict[key].icon = ipl.AwesomeIcon(name=name, marker_color=color)
+                    prev_phases[i] = ag.phase
 
-            # 배송지 완료 색상
+            # 배송지 완료 색상 (visited 된 것만)
             for house in model.houses:
                 key = f"house_{house.unique_id}"
                 if key in marker_dict and house.visited:
-                    marker_dict[key].color = "#2ea043"
-                    marker_dict[key].fill_color = "#2ea043"
+                    if marker_dict[key].color != "#2ea043":  # 이미 바꾼 건 스킵
+                        marker_dict[key].color = "#2ea043"
+                        marker_dict[key].fill_color = "#2ea043"
 
             # 알림 (대표 에이전트 기준)
             cur = ag0.phase
@@ -447,7 +457,7 @@ def Page():
             elif cur == "walk" and abs(ag0.current_slope) >= STEEP_THRESHOLD:
                 _set_alert(f"급경사 구간 진입 ({ag0.current_slope:.1f}°)")
 
-            # 지표 갱신 (대표 에이전트 기준)
+            # 지표 갱신
             sc = step_count.value + 1
             if isinstance(ag0, TruckWalkAgent):
                 live_walk_km.set(round(ag0.cumul_walk_m  / 1000, 3))
@@ -459,8 +469,6 @@ def Page():
             live_steep_km.set(round(ag0.steep_crossings * 0.05, 2))
             step_count.set(sc)
             status_widget.value = f'<div class="lm-wc-status">▶ 실행 중 &nbsp;|&nbsp; Step {sc}</div>'
-
-            time.sleep(1 / max(speed.value, 1))
 
     solara.use_thread(run_simulation, [running.value])
 
@@ -490,7 +498,7 @@ def Page():
             status_widget.value = f'<div class="lm-wc-status">▶ Step {sc}</div>'
 
     def on_reset():
-        set_scenario(scenario)
+        pass  # 초기화는 페이지 리로드
         log_saved.set(False); log_path.set(""); step_count.set(0)
         live_walk_km.set(0.0); live_truck_km.set(0.0)
         live_carried_kg.set(0.0); live_steep.set(0)
@@ -562,7 +570,7 @@ def Page():
             f'물동량&nbsp;<span style="color:#d29922;font-weight:600">{total_orders.value}</span>건'
             f'&nbsp;&nbsp;속도&nbsp;<span style="color:#388bfd;font-weight:600">{speed.value}</span>step/초</span>'
         ))
-        solara.SliderInt("", value=speed.value, min=1, max=30, on_value=speed.set)
+        solara.SliderInt("", value=speed.value, min=1, max=60, on_value=speed.set)
 
     # ── 지도 + 패널 ───────────────────────────────────────────────
     with solara.Row(style="flex:1;overflow:hidden;gap:0;min-height:0;"):
@@ -573,7 +581,7 @@ def Page():
             ag=ag0, step=step_count.value, houses=model.houses,
             walk_km=live_walk_km.value, truck_km=live_truck_km.value,
             carried_kg=live_carried_kg.value, steep=live_steep.value,
-            max_hours=max_hours, log_path=log_path.value, scenario=scenario,
+            max_hours=max_hours, log_path=log_path.value,
             total_orders=total_orders.value, num_workers=num_workers.value,
             steep_km=live_steep_km.value, alley_pct=live_alley_pct.value,
             agents=model.delivery_agents,

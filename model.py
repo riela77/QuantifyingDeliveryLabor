@@ -7,8 +7,7 @@ model.py - 라스트마일 배송 시뮬레이션 모델
 
 에이전트:
   HouseAgent     : 배송지
-  TruckWalkAgent : 트럭+도보 시나리오
-  MotoAgent      : 이륜차 시나리오
+  TruckWalkAgent : 트럭+도보 배달원
 """
 
 import os
@@ -22,10 +21,10 @@ import networkx as nx
 import geopandas as gpd
 from datetime import datetime
 from mesa_geo import GeoSpace
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point
 from shapely.ops import nearest_points
 
-from agents import HouseAgent, TruckWalkAgent, MotoAgent
+from agents import HouseAgent, TruckWalkAgent
 
 # ── 설정 ──────────────────────────────────────────────────────────
 START_LAT = 37.4954
@@ -34,11 +33,12 @@ START_POS = (START_LON, START_LAT)
 
 GRAPH_CACHE     = "data/graph.graphml"
 ROAD_GEOJSON    = "data2/gwanack_road_property.geojson"
-NUM_AGENTS      = 7             # ← 먼저 정의
-NUM_HOUSES      = NUM_AGENTS * 5  # ← 그 다음 참조
+NUM_AGENTS      = 7
+NUM_HOUSES      = NUM_AGENTS * 5
 CRS             = "EPSG:4326"
 TRUCK_MIN_WIDTH = 4.0
 PARK_RADIUS_M   = 300
+SIM_PER_FRAME   = 4   # 화면 갱신 1회당 시뮬레이션 step 수 (빠르기 조절)
 
 LOG_DIR = "logs"
 
@@ -179,9 +179,9 @@ def get_slope_along_route(road_gdf_4326, route_lonlat):
 # ── 모델 ──────────────────────────────────────────────────────────
 class DeliveryModel(mesa.Model):
 
-    def __init__(self, scenario="truck_walk", seed=None):
+    def __init__(self, seed=None):
         super().__init__(seed=seed)
-        self.scenario_name = scenario
+        self.scenario_name = "truck_walk"
         self.space         = GeoSpace(crs=CRS)
         self._step_count   = 0
         self.sim_logs      = []
@@ -223,23 +223,14 @@ class DeliveryModel(mesa.Model):
         for i in range(NUM_AGENTS):
             start_geom = Point(START_LON, START_LAT)
             assigned   = self.houses[i * houses_per_agent : (i + 1) * houses_per_agent]
+            agent      = TruckWalkAgent(self, start_geom, CRS)
+            segs       = self._build_truck_segments(assigned)
+            agent.set_segments(segs)
+            self.space.add_agents(agent)
+            self.delivery_agents.append(agent)
 
-            if scenario == "truck_walk":
-                agent = TruckWalkAgent(self, start_geom, CRS)
-                segs  = self._build_truck_segments(assigned)
-                agent.set_segments(segs)
-            else:
-                agent = MotoAgent(self, start_geom, CRS)
-                segs  = self._build_moto_segments(assigned)
-                agent.set_segments(segs)
-
-            self.space.add_agents(agent)        # ← 루프 안
-            self.delivery_agents.append(agent)  # ← 루프 안
-
-        # 하위 호환 (app.py 단수 참조용)
         self.delivery_agent = self.delivery_agents[0]
-
-        print(f"✅ 초기화 완료 [{scenario}] | 기사 {NUM_AGENTS}명 | 배송지 {NUM_HOUSES}곳")
+        print(f"✅ 초기화 완료 | 기사 {NUM_AGENTS}명 | 배송지 {NUM_HOUSES}곳")
 
     # ── 세그먼트 빌더 ──────────────────────────────────────────────
     def _build_truck_segments(self, houses):
@@ -261,38 +252,21 @@ class DeliveryModel(mesa.Model):
             cur_pos = h_pos
         return segments
 
-    def _build_moto_segments(self, houses):
-        segments = []
-        cur_pos  = START_POS
-        for house in houses:
-            h_pos      = (house.geometry.x, house.geometry.y)
-            route      = astar_path(self.G, cur_pos, h_pos)
-            slope_list = get_slope_along_route(self.road_gdf_4326, route)
-            segments.append({
-                "route":      route,
-                "slope_list": slope_list,
-                "house":      house,
-            })
-            cur_pos = h_pos
-        return segments
-
-    # ── step() ── 매 1분마다 호출 ─────────────────────────────────
+    # ── step() ── STEP_MIN 단위로 호출 ───────────────────────────
     def step(self):
-        # 에이전트 루프와 house 루프는 같은 레벨
         for agent in self.delivery_agents:
             if agent.phase != "done":
                 agent.step()
 
-        for house in self.houses:   # ← agent 루프 밖
+        for house in self.houses:
             house.step()
 
         self._step_count += 1
 
-        # 로그는 delivery_agent[0] 기준으로 기록 (대표값)
         ag = self.delivery_agent
-        is_truck_agent = isinstance(ag, TruckWalkAgent)
         log_entry = {
-            "step_min":        self._step_count,
+            "step":            self._step_count,
+            "elapsed_min":     round(self._step_count * 0.25, 2),  # STEP_MIN=0.25
             "scenario":        self.scenario_name,
             "phase":           ag.phase,
             "current_slope":   round(ag.current_slope, 3),
@@ -301,13 +275,9 @@ class DeliveryModel(mesa.Model):
             "steep_crossings": ag.steep_crossings,
             "lon":             round(ag.geometry.x, 6),
             "lat":             round(ag.geometry.y, 6),
+            "cumul_walk_km":   round(ag.cumul_walk_m  / 1000, 4),
+            "cumul_truck_km":  round(ag.cumul_truck_m / 1000, 4),
         }
-        if is_truck_agent:
-            log_entry["cumul_walk_km"]  = round(ag.cumul_walk_m  / 1000, 4)
-            log_entry["cumul_truck_km"] = round(ag.cumul_truck_m / 1000, 4)
-        else:
-            log_entry["cumul_dist_km"]  = round(ag.cumul_dist_m  / 1000, 4)
-
         self.sim_logs.append(log_entry)
 
     # ── CSV 저장 ──────────────────────────────────────────────────
@@ -318,13 +288,13 @@ class DeliveryModel(mesa.Model):
 
         os.makedirs(LOG_DIR, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename  = os.path.join(LOG_DIR, f"delivery_log_{self.scenario_name}_{timestamp}.csv")
+        filename  = os.path.join(LOG_DIR, f"delivery_log_{timestamp}.csv")
 
         df = pd.DataFrame(self.sim_logs)
         df["slope_load_idx"] = (df["current_slope"].abs() * df["carried_kg"]).round(3)
 
         df.to_csv(filename, index=False, encoding="utf-8-sig")
-        print(f"💾 로그 저장 완료: {filename} ({len(df)} steps)")
+        print(f"💾 로그 저장 완료: {filename} ({len(df)} steps / {df['elapsed_min'].max():.1f}분)")
         print(f"   도보 phase 비율: {(df['phase']=='walk').mean()*100:.1f}%")
         print(f"   평균 경사도(도보): {df[df['phase']=='walk']['current_slope'].mean():.2f}°")
         print(f"   최대 경사 부하: {df['slope_load_idx'].max():.1f} (°×kg)")
