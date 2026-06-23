@@ -1,0 +1,253 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg:      #0d1117;
+  --surf:    #161b22;
+  --overlay: #21262d;
+  --bd:      #30363d;
+  --bd-dim:  #21262d;
+  --t1:      #e6edf3;
+  --t2:      #c9d1d9;
+  --t3:      #8b949e;
+  --t4:      #484f58;
+  --blue:    #1f6feb;
+  --blue-hi: #388bfd;
+  --grn-hi:  #2ea043;
+  --yel-hi:  #d29922;
+  --red:     #da3633;
+  --red-hi:  #f85149;
+  --org-hi:  #f0883e;
+  --mono:    'JetBrains Mono', monospace;
+}
+
+/* ── 전체 페이지 다크 배경 ── */
+html, body { background: var(--bg) !important; }
+.v-application { background: var(--bg) !important; }
+.v-application--wrap { background: var(--bg) !important; }
+.v-main, .v-main__wrap { background: var(--bg) !important; }
+.v-content, .v-content__wrap { background: var(--bg) !important; }
+.v-card, .v-sheet { background: transparent !important; box-shadow: none !important; }
+
+/* ── 헤더 ── */
+.lm-header {
+  background: var(--surf) !important;
+  border-bottom: 1px solid var(--bd);
+  height: 44px; display: flex; align-items: center;
+  padding: 0 16px; gap: 10px; width: 100%;
+}
+.lm-logo { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--t1); display: flex; align-items: center; gap: 5px; }
+.lm-logo .br { color: var(--blue-hi); }
+.lm-logo-sep { width: 1px; height: 18px; background: var(--bd); }
+.lm-logo-sub { font-size: 10px; color: var(--t3); font-family: var(--mono); }
+.lm-ticker {
+  margin-left: auto; display: flex; align-items: center; gap: 7px;
+  background: var(--overlay); border: 0.5px solid var(--bd);
+  border-radius: 6px; padding: 3px 10px;
+  font-family: var(--mono); font-size: 10px; color: var(--t3);
+}
+.lm-ticker .sv { font-size: 12px; font-weight: 600; color: var(--t1); }
+.lm-ticker .ph {
+  font-size: 9px; padding: 1px 6px; border-radius: 4px;
+  background: var(--bg); color: var(--blue-hi);
+  border: 0.5px solid var(--blue);
+}
+
+/* ── 컨트롤 바 ── */
+.lm-ctrl-bar {
+  background: var(--surf) !important;
+  border-bottom: 1px solid var(--bd);
+  padding: 7px 16px; display: flex;
+  align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.lm-ctrl-bar .v-btn {
+  background: var(--overlay) !important;
+  border: 0.5px solid var(--bd) !important;
+  border-radius: 7px !important;
+  color: var(--t2) !important;
+  font-family: var(--mono) !important;
+  font-size: 12px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  box-shadow: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+}
+.lm-ctrl-bar .v-btn:hover { background: var(--bd) !important; color: var(--t1) !important; }
+.lm-ctrl-bar .v-btn.btn-run { background: var(--blue) !important; border-color: var(--blue) !important; color: #fff !important; }
+.lm-ctrl-bar .v-btn.btn-run:hover { background: var(--blue-hi) !important; }
+.lm-ctrl-bar .v-btn.btn-pause { background: var(--red) !important; border-color: var(--red) !important; color: #fff !important; }
+.lm-ctrl-bar .v-slider { margin: 0 !important; }
+.lm-ctrl-bar .v-slider__track-fill { background: var(--blue) !important; }
+.lm-ctrl-bar .v-slider__thumb-container .v-slider__thumb { background: var(--blue-hi) !important; }
+.lm-ctrl-bar .v-slider__track-background { background: var(--overlay) !important; }
+.lm-ctrl-bar .v-input, .lm-ctrl-bar .v-input__slot { background: transparent !important; }
+.lm-ctrl-bar label, .lm-ctrl-bar .v-label { color: var(--t3) !important; font-family: var(--mono) !important; font-size: 11px !important; }
+
+/* ── WidgetControl 안 오버레이 (leaflet 내부에 직접 삽입) ── */
+.lm-wc-status {
+  background: rgba(22,27,34,.92);
+  border: 0.5px solid var(--bd);
+  border-radius: 100px;
+  padding: 5px 18px;
+  font-size: 11px; font-family: var(--mono); color: var(--t3);
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+.lm-wc-alert {
+  background: rgba(13,10,10,.95);
+  border: 0.5px solid var(--red-hi);
+  border-radius: 8px; padding: 7px 16px;
+  font-size: 11px; font-family: var(--mono); color: var(--red-hi);
+  white-space: nowrap; pointer-events: none;
+}
+.lm-wc-legend {
+  background: rgba(22,27,34,.9);
+  border: 0.5px solid var(--bd);
+  border-radius: 8px; padding: 9px 12px;
+  font-size: 10px; color: var(--t3); font-family: var(--mono);
+  line-height: 2.1;
+}
+/* leaflet WidgetControl 기본 배경 제거 */
+.leaflet-control { background: transparent !important; border: none !important; box-shadow: none !important; }
+
+.lm-leg  { display: flex; align-items: center; gap: 6px; }
+.lm-ll   { display: inline-block; width: 18px; height: 2.5px; border-radius: 2px; }
+.lm-ldot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── 우측 패널 ── */
+.lm-panel {
+  width: 272px !important; flex-shrink: 0 !important;
+  background: var(--surf) !important;
+  border-left: 1px solid var(--bd) !important;
+  display: flex !important; flex-direction: column;
+  overflow: hidden; height: 100%;
+}
+
+/* ── 탭 전환 (radio + CSS, JS 없음) ── */
+.lm-panel input[type="radio"] { display: none; }
+.lm-tabs { display: flex; border-bottom: 1px solid var(--bd); flex-shrink: 0; }
+.lm-tab {
+  flex: 1; padding: 9px 4px; font-size: 10px; font-family: var(--mono);
+  color: var(--t3); cursor: pointer; border: none;
+  border-bottom: 2px solid transparent; background: none; letter-spacing: .02em;
+  transition: all .15s;
+}
+.lm-tab:hover { color: var(--t2); background: var(--overlay); }
+#tab-status:checked ~ .lm-tabs label[for="tab-status"],
+#tab-params:checked ~ .lm-tabs label[for="tab-params"],
+#tab-env:checked    ~ .lm-tabs label[for="tab-env"] {
+  color: var(--blue-hi);
+  border-bottom-color: var(--blue);
+}
+.lm-pane { display: none; flex: 1; overflow-y: auto; padding: 14px; flex-direction: column; gap: 9px; }
+#tab-status:checked ~ #lm-pane-status,
+#tab-params:checked ~ #lm-pane-params,
+#tab-env:checked    ~ #lm-pane-env { display: flex; }
+.lm-pane::-webkit-scrollbar { width: 3px; }
+.lm-pane::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
+
+/* ── 지표 카드 ── */
+.lm-mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.lm-metric { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 10px 11px; }
+.lm-mv { font-size: 22px; font-weight: 600; font-family: var(--mono); line-height: 1; }
+.lm-ml { font-size: 10px; color: var(--t3); margin-top: 4px; }
+
+/* ── 핵심 노동강도 지표 카드 (큰 숫자, 경고 색상) ── */
+.lm-kpi-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.lm-kpi {
+  background: var(--bg); border: 0.5px solid var(--bd);
+  border-radius: 8px; padding: 10px 13px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.lm-kpi-lbl { font-size: 10px; color: var(--t3); font-family: var(--mono); }
+.lm-kpi-val { font-size: 20px; font-weight: 600; font-family: var(--mono); color: var(--t1); }
+.lm-kpi-val.warn   { color: var(--yel-hi); }
+.lm-kpi-val.danger { color: var(--red-hi); }
+
+/* ── 물동량 입력 영역 ── */
+.lm-input-box {
+  background: var(--bg); border: 0.5px solid var(--bd);
+  border-radius: 8px; padding: 10px 12px;
+}
+.lm-input-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 10px; color: var(--t3); font-family: var(--mono); margin-bottom: 7px;
+}
+.lm-input-row:last-child { margin-bottom: 0; }
+.lm-input-val { font-size: 15px; font-weight: 600; font-family: var(--mono); color: var(--t1); }
+.lm-add-btns { display: flex; gap: 5px; margin-top: 8px; }
+.lm-add-btn {
+  flex: 1; padding: 5px 0; font-size: 11px; font-family: var(--mono);
+  background: var(--overlay); border: 0.5px solid var(--bd);
+  border-radius: 6px; color: var(--t2); cursor: pointer; text-align: center;
+  transition: background .15s, color .15s;
+}
+.lm-add-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* ── 섹션 라벨 ── */
+.lm-sec { font-size: 10px; color: var(--t3); font-family: var(--mono); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; border-bottom: 0.5px solid var(--bd-dim); padding-bottom: 4px; margin-top: 2px; }
+
+/* ── 진행바 ── */
+.lm-prow { display: flex; justify-content: space-between; font-size: 10px; color: var(--t3); font-family: var(--mono); margin-bottom: 5px; }
+.lm-pwrap { background: var(--overlay); border-radius: 4px; height: 5px; overflow: hidden; }
+.lm-pfill { height: 5px; border-radius: 4px; background: var(--blue-hi); transition: width .4s; }
+
+/* ── 노동 강도 카드 ── */
+.lm-lgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.lm-lc { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 9px 10px; }
+.lm-lc-lbl { font-size: 9px; color: var(--t3); font-family: var(--mono); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 5px; }
+.lm-lc-val { font-size: 17px; font-weight: 600; font-family: var(--mono); color: var(--t1); }
+.lm-lc-val.warn   { color: var(--org-hi); }
+.lm-lc-val.danger { color: var(--red-hi); }
+
+/* ── 경사도 박스 ── */
+.lm-slopebox { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 9px 12px; }
+.lm-sloperow { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+
+/* ── 배달원 카드 ── */
+.lm-drv { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 9px 11px; transition: border-color .25s, background .25s; }
+.lm-drv.warn { border-color: var(--yel-hi) !important; background: rgba(18,16,10,.6); }
+.lm-drv.over { border-color: var(--red-hi) !important; background: rgba(19,10,10,.6); }
+.lm-drv-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.lm-drv-name { font-family: var(--mono); font-weight: 600; font-size: 11px; color: var(--t1); }
+.lm-badge { font-size: 9px; font-family: var(--mono); padding: 2px 7px; border-radius: 20px; background: var(--overlay); color: var(--t3); border: 0.5px solid var(--bd); }
+.lm-badge.truck { color: var(--blue-hi); border-color: var(--blue); }
+.lm-badge.walk  { color: var(--org-hi);  border-color: var(--org-hi); }
+.lm-badge.done  { color: var(--grn-hi);  border-color: var(--grn-hi); }
+.lm-badge.over  { color: var(--red-hi);  border-color: var(--red-hi); }
+.lm-drow { display: flex; justify-content: space-between; color: var(--t3); font-size: 10px; font-family: var(--mono); margin-bottom: 3px; }
+.lm-drow span:last-child { color: var(--t2); }
+.lm-dpbg { background: var(--overlay); border-radius: 3px; height: 3px; margin-top: 5px; }
+.lm-dpfg { border-radius: 3px; height: 3px; background: var(--blue); transition: width .4s; }
+.lm-dpfg.warn { background: var(--yel-hi); }
+.lm-dpfg.over { background: var(--red-hi); }
+
+/* ── 초과근무 깜빡임 ── */
+@keyframes lm-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+.lm-overtime-blink {
+  animation: lm-blink 1.1s ease-in-out infinite;
+  color: var(--red-hi) !important;
+}
+
+/* ── 배송지 목록 ── */
+.lm-hlist { display: flex; flex-direction: column; gap: 3px; }
+.lm-hrow { display: flex; align-items: center; gap: 7px; font-size: 11px; font-family: var(--mono); color: var(--t3); padding: 3px 0; }
+.lm-hrow.cur  { color: var(--t1); }
+.lm-hrow.done { color: var(--t4); }
+.lm-hdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── 완료 배너 ── */
+.lm-done { background: rgba(35,134,54,.1); border: 0.5px solid var(--grn-hi); border-radius: 8px; padding: 10px 12px; font-family: var(--mono); font-size: 11px; color: var(--grn-hi); text-align: center; line-height: 1.9; }
+
+/* ── 시간초과 알림 ── */
+.lm-ot { background: rgba(19,10,10,.8); border: 0.5px solid var(--red-hi); border-radius: 6px; padding: 7px 10px; font-size: 11px; color: var(--red-hi); font-family: var(--mono); }
+
+/* ── 인포 박스 ── */
+.lm-info { background: var(--bg); border: 0.5px solid var(--bd); border-radius: 8px; padding: 10px 12px; font-size: 10px; font-family: var(--mono); color: var(--t3); line-height: 2.1; }
+.lm-info .g { color: var(--grn-hi); font-weight: 500; }
+.lm-info .y { color: var(--yel-hi); font-weight: 500; }
+.lm-info .r { color: var(--red-hi); font-weight: 500; }
