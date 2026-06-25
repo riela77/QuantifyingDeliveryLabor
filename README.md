@@ -1,9 +1,10 @@
-<h1 style="border-bottom: none;">
-  <img width="50" align="center" alt="캡스톤 디자인 로고" src="https://github.com/user-attachments/assets/303c8279-f7c6-43ee-b01f-c9ed85f5d76b" /> 
-  QuantifyingDeliveryLabor
-</h1>
+<img align="left" width="120" alt="캡스톤 디자인 로고" src="https://github.com/user-attachments/assets/303c8279-f7c6-43ee-b01f-c9ed85f5d76b" />
+
+<h1 style="border-bottom: none;">QuantifyingDeliveryLabor</h1>
 
 **지형 특성에 따른 배송 노동 환경 정량화 시뮬레이터**
+
+<br><br>
 
 ## 📌 프로젝트 소개
 
