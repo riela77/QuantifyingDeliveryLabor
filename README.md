@@ -1,10 +1,10 @@
-<img width="400" alt="캡스톤 디자인 로고" src="https://github.com/user-attachments/assets/e819cc15-dbe1-4227-ab5a-a077fd75e7ab" />
+<img align="left" width="120" alt="캡스톤 디자인 로고" src="https://github.com/user-attachments/assets/e819cc15-dbe1-4227-ab5a-a077fd75e7ab" />
 
 # QuantifyingDeliveryLabor
 
 **지형 특성에 따른 배송 노동 환경 정량화 시뮬레이터**
 
-## 📌 프로젝트 소개
+<br><br> ## 📌 프로젝트 소개
 
 택배 배송 기사는 배송 건당 동일한 수수료를 받지만, 실제 소요 시간과 체력 소모는 배송 구역의 경사도와 골목 너비 등 지형적 요인에 따라 크게 달라집니다.
 
